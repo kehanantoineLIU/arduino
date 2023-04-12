@@ -1,0 +1,52 @@
+#include <ETH.h> //引用以使用ETH
+#include <WiFiUdp.h> 
+
+#define ETH_ADDR        1
+#define ETH_POWER_PIN  -1
+#define ETH_MDC_PIN    23
+#define ETH_MDIO_PIN   18
+#define ETH_TYPE       ETH_PHY_LAN8720
+#define ETH_CLK_MODE   ETH_CLOCK_GPIO17_OUT
+
+WiFiUDP Udp;                      //创建UDP对象
+unsigned int localUdpPort = 2333; //本地端口号
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println();
+
+  ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE); //启用ETH
+  while(!((uint32_t)ETH.localIP())) //等待获取到IP
+  {
+
+  }
+  Serial.println("Connected");
+  Serial.print("IP Address:");
+  Serial.println(ETH.localIP());
+
+  Udp.begin(localUdpPort); //启用UDP监听以接收数据
+}
+
+void loop()
+{
+  int packetSize = Udp.parsePacket(); //获取当前队首数据包长度
+  if (packetSize)                     //如果有数据可用
+  {
+    char buf[packetSize];
+    Udp.read(buf, packetSize); //读取当前包数据
+
+    Serial.println();
+    Serial.print("Received: ");
+    Serial.println(buf);
+    Serial.print("From IP: ");
+    Serial.println(Udp.remoteIP());
+    Serial.print("From Port: ");
+    Serial.println(Udp.remotePort());
+
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort()); //准备发送数据
+    Udp.print("Received: ");    //复制数据到发送缓存
+    Udp.write((const uint8_t*)buf, packetSize); //复制数据到发送缓存
+    Udp.endPacket();            //发送数据
+  }
+}
